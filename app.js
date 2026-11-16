@@ -669,6 +669,19 @@ const ICON = {
   badge: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 15.6 6.6 18.5l1.2-6L3.3 8.3l6.1-.7z"/></svg>'
 };
 
+/* باركود رابط الدعوة (يُرسم SVG محلياً، ويختفي بهدوء إن لم تُحمّل المكتبة) */
+const qrCache = {};
+function qrSVG(text) {
+  if (!window.qrcode || !text) return '';
+  if (qrCache[text]) return qrCache[text];
+  try {
+    const q = qrcode(0, 'M'); q.addData(text); q.make();
+    const n = q.getModuleCount(); let d = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
+    return (qrCache[text] = `<svg viewBox="-3 -3 ${n + 6} ${n + 6}" shape-rendering="crispEdges" role="img" aria-label="باركود رابط الدعوة"><rect x="-3" y="-3" width="${n + 6}" height="${n + 6}" fill="#fff"/><path d="${d}" fill="#14100a"/></svg>`);
+  } catch (e) { return ''; }
+}
+
 function toast(t) {
   const el = document.createElement('div');
   el.className = 'toast'; el.textContent = t;
@@ -724,7 +737,8 @@ function viewHome() {
     </div>
     <form class="entry" onsubmit="return false">
       <label for="nm">اسمك في التحقيق</label>
-      <input id="nm" class="field" maxlength="16" value="${esc(f.name)}" placeholder="مثلاً: أبو فهد" autocomplete="nickname">
+      ${pre ? `<p class="eyebrow">دُعيت إلى الغرفة <span dir="ltr">${esc(pre.code)}</span>، اكتب اسمك وادخل</p>` : ''}
+      <input id="nm" class="field" maxlength="16" value="${esc(f.name)}" placeholder="مثلاً: أبو فهد" autocomplete="nickname" ${pre ? 'autofocus' : ''}>
       <div class="colors" role="radiogroup" aria-label="اختر لونك">${COLORS.map(c => `<button type="button" class="sw ${c === f.color ? 'on' : ''}" style="--c:${c}" data-act="color" data-c="${c}" role="radio" aria-checked="${c === f.color}" aria-label="لون"></button>`).join('')}</div>
       ${pre ? `
         <button class="btn primary big" type="button" data-act="joinHash">ادخل الغرفة <span dir="ltr">${esc(pre.code)}</span></button>
@@ -750,12 +764,16 @@ function viewLobby() {
   const fOpts = [['random', 'عشوائي'], ['rotate', 'بالدور بين اللاعبين'], ...pv.players.map(p => [p.id, p.name])];
   const accOn = canExtra && st.accomplice, witOn = accOn && st.witness;
   const invest = Math.max(0, n - 2 - (accOn ? 1 : 0) - (witOn ? 1 : 0));
+  const qr = qrSVG(inviteLink());
   return `${topbar()}<main class="lobby wrap">
-    <section class="invite">
-      <p class="eyebrow">رمز الغرفة</p>
-      <div class="bigcode" dir="ltr">${pv.code}</div>
-      <div class="row center"><button class="btn primary" data-act="copy">انسخ رابط الدعوة</button>${navigator.share ? '<button class="btn" data-act="share">مشاركة</button>' : ''}</div>
-      <p class="hint">أرسل الرابط لأصحابك في الواتساب. كل واحد يفتحه من جواله ويكتب اسمه.</p>
+    <section class="invite ${qr ? 'has-qr' : ''}">
+      ${qr ? `<button class="qr" data-act="qrBig" aria-label="تكبير الباركود">${qr}<span>اضغط للتكبير</span></button>` : ''}
+      <div class="invite-txt">
+        <p class="eyebrow">رمز الغرفة</p>
+        <div class="bigcode" dir="ltr">${pv.code}</div>
+        <div class="row center"><button class="btn primary" data-act="copy">انسخ رابط الدعوة</button>${navigator.share ? '<button class="btn" data-act="share">مشاركة</button>' : ''}</div>
+        <p class="hint">${qr ? 'الأسرع: يوجّه أصحابك كاميرا الجوال نحو الباركود فيدخلون الغرفة فوراً. ومن ليس معكم في المكان أرسل له الرابط في الواتساب.' : 'أرسل الرابط لأصحابك في الواتساب. كل واحد يفتحه من جواله ويكتب اسمه.'}</p>
+      </div>
       ${!inRoom ? `<p class="warn">${pv.kicked.includes(me) ? 'أخرجك المضيف من هذه الغرفة.' : 'الغرفة ممتلئة، يمكنك المشاهدة فقط.'}</p>` : ''}
     </section>
     <section class="roster">
@@ -1027,10 +1045,15 @@ function modalHTML() {
   if (!S.ui.modal) lastModal = null;
   switch (S.ui.modal) {
     case 'rules': return modalWrap('كيف نلعب؟', RULES_HTML);
+    case 'qr': {
+      const qr = qrSVG(inviteLink());
+      return modalWrap('ادخل الغرفة', `<div class="qr-big">${qr || ''}<div class="bigcode" dir="ltr">${esc(Net.code)}</div><p>وجّه كاميرا الجوال نحو الباركود، ثم اضغط الرابط الذي يظهر.</p>${S.pub && S.pub.phase !== 'lobby' ? '<p class="muted">القضية بدأت: من يدخل الآن يشاهد كمتفرج، ويلعب في القضية القادمة.</p>' : ''}</div>`);
+    }
     case 'role': return modalWrap('بطاقتي السرية', `<div class="rolecard ${teamCls()}">${roleInfoHTML()}</div>`);
     case 'accuse': return accuseModal();
     case 'menu': return modalWrap('القائمة', `
       <button class="btn" data-act="rules">كيف نلعب؟</button>
+      ${S.pub && window.qrcode ? '<button class="btn" data-act="qrBig">اعرض باركود الدعوة</button>' : ''}
       ${S.pub ? '<button class="btn" data-act="copy">انسخ رابط الدعوة</button>' : ''}
       ${Net.isHost && S.pub && S.pub.g && S.pub.phase !== 'end' ? '<button class="btn" data-act="abort">أنهِ القضية وعُد لغرفة الانتظار</button>' : ''}
       ${S.room ? '<button class="btn blood" data-act="leave">غادر الغرفة</button>' : ''}
@@ -1133,6 +1156,7 @@ const ACT = {
   clearHash: () => { S.pendingJoin = null; history.replaceState(null, '', location.pathname + (SLOT ? '#~' + SLOT : '')); render(); },
   rules: () => { S.ui.modal = 'rules'; render(); },
   menu: () => { S.ui.modal = 'menu'; render(); },
+  qrBig: () => { S.ui.modal = 'qr'; render(); },
   close: () => { S.ui.modal = null; render(); },
   closeBg: (d, el, e) => { if (e.target === el) { S.ui.modal = null; render(); } },
   snd: () => { Snd.on = !Snd.on; store.set('_snd', Snd.on); Snd.init(); Snd.play('pop'); render(); },

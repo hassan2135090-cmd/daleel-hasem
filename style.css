@@ -277,6 +277,18 @@ button.card:hover { transform: translateY(-1px); }
 .lobby h2 { font: 700 19px var(--f-body); display: flex; align-items: center; gap: 10px; }
 .count { font: 500 13px var(--f-label); color: var(--fog); }
 .invite { text-align: center; justify-items: center; }
+.invite-txt { display: grid; gap: 14px; justify-items: center; min-width: 0; }
+.qr { display: grid; gap: 6px; justify-items: center; padding: 10px 10px 8px; border: 0; border-radius: 14px; background: #fff; box-shadow: 0 10px 26px rgba(0, 0, 0, .45); transform: rotate(-2deg); transition: transform .2s; }
+.qr:hover { transform: rotate(0) scale(1.02); }
+.qr svg { width: min(200px, 56vw); height: auto; display: block; }
+.qr span { font: 500 11px var(--f-label); color: #5b5246; }
+@media (min-width: 700px) {
+  .invite.has-qr { grid-template-columns: auto 1fr; align-items: center; gap: 28px; text-align: start; }
+  .invite.has-qr .invite-txt { justify-items: start; }
+  .invite.has-qr .row.center { justify-content: flex-start; }
+}
+.qr-big { display: grid; gap: 14px; justify-items: center; text-align: center; }
+.qr-big svg { width: min(340px, 82vw); height: auto; border-radius: 14px; }
 .bigcode { font: 700 clamp(40px, 12vw, 64px)/1 var(--f-label); letter-spacing: .25em; color: var(--brass); padding-inline-start: .25em; }
 .hint { color: var(--fog); font-size: 13.5px; }
 .roster ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
